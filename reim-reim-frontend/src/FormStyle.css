@@ -1,0 +1,195 @@
+/**
+ * 差旅费用报销单 - 样式文件
+ * 功能：定义表单页面的布局和样式
+ */
+
+/* ============================================ */
+/* 【整体页面布局】 */
+/* ============================================ */
+
+/** 页面容器 */
+.formPage {
+    width: 100%;
+    min-height: 100vh;
+    background-color: #f5f5f5;
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    flex-direction: column;
+    align-items: center;
+}
+
+/** 表单容器 */
+.form-container {
+    width: 1250px;
+    max-width: 95%;
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    min-height: 1100px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================ */
+/* 【单据头部】 */
+/* ============================================ */
+
+/** 标题区域 */
+.title {
+    width: 1250px;
+    height: 80px;
+    padding: 10px 0px 0px 0px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/** 链接样式 */
+.el-link {
+    font-size: 14px;
+}
+
+/* ============================================ */
+/* 【主表单区域】 */
+/* ============================================ */
+
+/** 主表单容器 */
+.main {
+    flex: 1;           /* 占据剩余空间 */
+    padding: 10px 32px;
+    overflow-y: auto;   /* 垂直滚动 */
+    overflow-x: hidden; /* 禁止水平滚动 */
+}
+
+/* ============================================ */
+/* 【折叠面板样式】 */
+/* ============================================ */
+
+/** 折叠面板容器 */
+:deep(.el-collapse) {
+    border: none;
+}
+
+/** 折叠项 */
+:deep(.el-collapse-item) {
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+/** 折叠项头部 */
+:deep(.el-collapse-item__header) {
+    background-color: #fafafa;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    height: 56px;  /* 固定头部高度 */
+    line-height: 24px;
+}
+
+/** 折叠项内容包裹层 */
+:deep(.el-collapse-item__wrap) {
+    border-top: none;
+}
+
+/** 折叠项内容区域 */
+:deep(.el-collapse-item__content) {
+    padding: 24px;
+}
+
+/* ============================================ */
+/* 【分区标题】 */
+/* ============================================ */
+
+/** 分区标题样式 */
+.topic {
+    font-size: 16px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 36px;
+}
+
+#topic {
+    font-size: 16px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    width: 1050px;
+    height: 36px;
+}
+
+
+/* ============================================ */
+/* 【补助提示】 */
+/* ============================================ */
+
+/** 补助提示框 */
+.subsidy-tip {
+    padding: 12px;
+    background-color: #fffbe6;
+    border: 1px solid #ffe58f;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #666;
+}
+
+/* ============================================ */
+/* 【费用合计】 */
+/* ============================================ */
+
+/** 费用合计表格 */
+.moneyTable {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+}
+
+/* ============================================ */
+/* 【底部按钮】 */
+/* ============================================ */
+
+/** 底部按钮区域 */
+.form-footer {
+    flex-shrink: 0;  /* 不被压缩 */
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 32px;
+    border-top: 1px solid #eee;
+    height: 72px;  /* 固定高度 */
+}
+
+/* ============================================ */
+/* 【表单样式】 */
+/* ============================================ */
+
+/** 表单项间距 */
+:deep(.el-form-item) {
+    margin-bottom: 20px;
+}
+
+/** 表格字体大小 */
+:deep(.el-table) {
+    font-size: 14px;
+}
+
+/** 弹窗内容区域 */
+:deep(.el-dialog__body) {
+    padding: 20px 10px;
+}
+
+/* 补助日历金额超标文字变红 */
+.amount-error :deep(.el-input__inner) {
+    color: #f56c6c !important;
+}

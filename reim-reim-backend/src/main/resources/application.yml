@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: reim
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver  # ??????????????
+    url: jdbc:mysql://localhost:3306/vimanage_reim?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+    username: root  # ??MySQL???
+    password: 3463241728  # ??MySQL??
+  main:
+    allow-circular-references: true
+# Mybatis-Plus?????Spring Boot3.x?
+mybatis-plus:
+  mapper-locations: classpath:/mapper/**/*.xml
+  type-aliases-package: com.viessmart.reimburse.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # ??????SQL??
+server:
+  address: 0.0.0.0
+logging:
+  level:
+    com.viessmart.reimburse: DEBUG   # 替换为你的包路径
+    root: INFO

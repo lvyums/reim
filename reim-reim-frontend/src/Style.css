@@ -1,0 +1,30 @@
+/*整体居中*/
+.div {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    min-height: 100vh;
+    padding: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+/*查询板块设置*/
+.query {
+    width: 1700px;
+    padding: 16px;
+}
+/*表板块设置*/
+.table {
+    width: 1600px;
+    padding: 10px;
+}
+/*分页板块设置*/
+.page {
+    padding: 20px;
+}
+
+
+
+
