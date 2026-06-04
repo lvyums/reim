@@ -1,9 +1,5 @@
 package com.viessmart.reimburse.vo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.viessmart.reimburse.entity.ReimItinerary;
-import com.viessmart.reimburse.entity.ReimSubsidy;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -119,15 +115,14 @@ public class ReimFormVO {
      */
     private LocalDateTime updateTime;
 
-    // 生成 getter/setter
     // 行程列表
     @Setter
     @Getter
-    private List<ReimItinerary> itineraries;
+    private List<ReimItineraryVO> itineraries;
 
     // 补助列表
     @Setter
     @Getter
-    private List<ReimSubsidy> subsidies;
+    private List<ReimSubsidyVO> subsidies;
 
 }

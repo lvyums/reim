@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -51,12 +54,33 @@ public class ReimSubsidyCalendarServiceImpl extends ServiceImpl<ReimSubsidyCalen
                 .orderByAsc(ReimSubsidyCalendar::getDate)
                 .list();
 
+        // 批量查询城市名称，避免 N+1 问题
+        Set<String> cityNos = list.stream()
+                .map(ReimSubsidyCalendar::getCityNo)
+                .filter(cityNo -> cityNo != null && !cityNo.isBlank())
+                .collect(Collectors.toSet());
+
+        Map<String, String> cityNameMap;
+        if (!cityNos.isEmpty()) {
+            cityNameMap = baseCityService.lambdaQuery()
+                    .in(com.viessmart.reimburse.entity.BaseCity::getCityNo, cityNos)
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            com.viessmart.reimburse.entity.BaseCity::getCityNo,
+                            com.viessmart.reimburse.entity.BaseCity::getCityName,
+                            (a, b) -> a
+                    ));
+        } else {
+            cityNameMap = java.util.Collections.emptyMap();
+        }
+
         List<SubsidyCalendarVO> voList = new ArrayList<>();
         for (ReimSubsidyCalendar calendar : list) {
             SubsidyCalendarVO vo = new SubsidyCalendarVO();
             vo.setCalendarUid(calendar.getCalendarUid());
             vo.setDate(calendar.getDate().toString());
-            vo.setCityName(baseCityService.getCityNameByCityNo(calendar.getCityNo()));
+            vo.setCityName(cityNameMap.getOrDefault(calendar.getCityNo(), calendar.getCityNo()));
 
             vo.setMealSelected(calendar.getMealSelected());
             vo.setMealStandardAmount(calendar.getMealStandardAmount());

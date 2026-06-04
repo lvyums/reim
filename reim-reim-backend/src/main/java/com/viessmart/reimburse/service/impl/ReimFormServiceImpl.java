@@ -11,6 +11,8 @@ import com.viessmart.reimburse.entity.*;
 import com.viessmart.reimburse.mapper.ReimFormMapper;
 import com.viessmart.reimburse.service.*;
 import com.viessmart.reimburse.vo.ReimFormVO;
+import com.viessmart.reimburse.vo.ReimItineraryVO;
+import com.viessmart.reimburse.vo.ReimSubsidyVO;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -259,19 +261,29 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
         }
         ReimFormVO vo = convertVO(form);
 
-        // 3. 查询行程列表
+        // 查询行程列表并转为 VO
         LambdaQueryWrapper<ReimItinerary> itineraryQuery = new LambdaQueryWrapper<>();
         itineraryQuery.eq(ReimItinerary::getFormId, formUid);
         itineraryQuery.eq(ReimItinerary::getDeleted, 0);
         List<ReimItinerary> itineraries = itineraryService.list(itineraryQuery);
-        vo.setItineraries(itineraries);
+        List<ReimItineraryVO> itineraryVOs = itineraries.stream().map(it -> {
+            ReimItineraryVO itVo = new ReimItineraryVO();
+            BeanUtils.copyProperties(it, itVo);
+            return itVo;
+        }).toList();
+        vo.setItineraries(itineraryVOs);
 
-        // 4. 查询补助列表
+        // 查询补助列表并转为 VO
         LambdaQueryWrapper<ReimSubsidy> subsidyQuery = new LambdaQueryWrapper<>();
         subsidyQuery.eq(ReimSubsidy::getFormId, formUid);
         subsidyQuery.eq(ReimSubsidy::getDeleted, 0);
         List<ReimSubsidy> subsidies = subsidyService.list(subsidyQuery);
-        vo.setSubsidies(subsidies);
+        List<ReimSubsidyVO> subsidyVOs = subsidies.stream().map(sub -> {
+            ReimSubsidyVO subVo = new ReimSubsidyVO();
+            BeanUtils.copyProperties(sub, subVo);
+            return subVo;
+        }).toList();
+        vo.setSubsidies(subsidyVOs);
 
         return vo;
     }
@@ -497,12 +509,14 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
             }
         }
 
-        ReimForm form = new ReimForm();
-        form.setFormUid(formUid);
+        // 先查询当前记录以获取 version，确保乐观锁生效
+        ReimForm form = getById(formUid);
+        if (form == null) return;
         form.setMealAllowanceTotal(mealTotal);
         form.setTransportAllowanceTotal(transportTotal);
         form.setCommunicationAllowanceTotal(commTotal);
         form.setAllowanceTotal(mealTotal + transportTotal + commTotal);
+        form.setUpdateTime(LocalDateTime.now());
         updateById(form);
     }
 
@@ -522,7 +536,6 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
         form.setDepartmentId("1");           // 部门默认值
         form.setCompanyId("1");        // 公司默认值
         form.setBusinessTypeId("1");        // 业务类型默认值
-        form.setStatus(1);            // 未提交
         form.setStatus(FormStatusEnum.DRAFT.getCode());
         form.setMealAllowanceTotal(0);
         form.setTransportAllowanceTotal(0);

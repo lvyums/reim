@@ -29,7 +29,7 @@ const router = useRouter()
 
 // 查询条件
 const search = reactive({
-  number: '',
+  orderNo: '',
   title: '',
   reason: '',
   companyId: '',
@@ -188,7 +188,7 @@ function onSearch() {
 // 清空
 function clear() {
   Object.assign(search, {
-    number: '', title: '', reason: '',
+    orderNo: '', title: '', reason: '',
     companyId: '', departmentId: '', reimburserId: '', businessTypeId: ''
   })
   loadList()
@@ -201,7 +201,7 @@ function clear() {
       <div style="margin-bottom: 20px;">
         <el-form :inline="true" :model="search">
           <el-form-item label="报销单号" style="margin-right: 90px;margin-left: 140px;">
-            <el-input v-model="search.number" placeholder="请输入" style="width: 240px;" />
+            <el-input v-model="search.orderNo" placeholder="请输入" style="width: 240px;" />
           </el-form-item>
           <el-form-item label="标题" style="margin-right: 90px;">
             <el-input v-model="search.title" placeholder="请输入" style="width: 240px;" />

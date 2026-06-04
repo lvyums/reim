@@ -26,20 +26,16 @@ public class ReimItineraryController {
     /**
      * 添加行程
      */
-    @RequestMapping("/add")
-    public Result<?> addItineraries(@Valid @RequestBody ReimItineraryDTO itineraryDTO) {
-        try {
-            ReimItinerary itinerary = iReimItineraryService.addReimItinerary(itineraryDTO);
-            return Result.success(itinerary);
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
-        }
+    @PostMapping("/add")
+    public Result<ReimItinerary> addItineraries(@Valid @RequestBody ReimItineraryDTO itineraryDTO) {
+        ReimItinerary itinerary = iReimItineraryService.addReimItinerary(itineraryDTO);
+        return Result.success(itinerary);
     }
 
     /**
      * 查询行程列表
      */
-    @RequestMapping("/list")
+    @GetMapping("/list")
     public Result<List<ReimItineraryVO>> listItineraries(@RequestParam Long formUid) {
         return Result.success(iReimItineraryService.listItinerary(formUid));
     }
@@ -47,36 +43,36 @@ public class ReimItineraryController {
     /**
      * 修改行程
      */
-    @RequestMapping("/update")
-    public Object updateItineraries(@Valid @RequestBody ReimItineraryDTO itineraryDTO) {
+    @PutMapping("/update")
+    public Result<String> updateItineraries(@Valid @RequestBody ReimItineraryDTO itineraryDTO) {
         iReimItineraryService.updateItinerary(itineraryDTO);
-        return Result.success("success");
+        return Result.success("修改成功");
     }
 
     /**
      * 删除行程
      */
-    @RequestMapping("/delete")
-    public Object deleteItineraries(@RequestBody ReimItineraryDTO itineraryDTO) {
+    @DeleteMapping("/delete")
+    public Result<String> deleteItineraries(@Valid @RequestBody ReimItineraryDTO itineraryDTO) {
         iReimItineraryService.deleteItinerary(itineraryDTO);
-        return Result.success("success");
+        return Result.success("删除成功");
     }
 
     /**
      * 复制行程
      */
-    @RequestMapping("/copy")
-    public Object copyItineraries(@RequestBody ReimItineraryDTO itineraryDTO) {
+    @PostMapping("/copy")
+    public Result<String> copyItineraries(@Valid @RequestBody ReimItineraryDTO itineraryDTO) {
         iReimItineraryService.copyItinerary(itineraryDTO);
         log.info("复制行程成功");
-        return Result.success("success");
+        return Result.success("复制成功");
     }
 
     /**
      * 根据ID查询行程
      */
     @GetMapping("/getById")
-    public Result<?> getById(@RequestParam Long itineraryUid) {
+    public Result<ReimItinerary> getById(@RequestParam Long itineraryUid) {
         return Result.success(iReimItineraryService.getById(itineraryUid));
     }
 }

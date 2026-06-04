@@ -31,7 +31,7 @@ export function addItinerary(data) {
 export function updateItinerary(data) {
   return request({
     url: '/api/itineraries/update',
-    method: 'post',
+    method: 'put',
     data
   })
 }
@@ -43,7 +43,7 @@ export function updateItinerary(data) {
 export function deleteItinerary(data) {
   return request({
     url: '/api/itineraries/delete',
-    method: 'post',
+    method: 'delete',
     data
   })
 }

@@ -107,7 +107,7 @@ CREATE TABLE reim_form (
                            department_id                   VARCHAR(50) NOT NULL COMMENT '报销部门ID（关联 reim_department.reim_department_id）',
                            company_id                      VARCHAR(50) NOT NULL COMMENT '费用归属公司ID（关联 reim_company.reim_company_id）',
                            business_type_id                VARCHAR(50) NOT NULL COMMENT '业务类型ID（关联 base_business_type.business_type_id）',
-                           status                          TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-未提交 2-审批中 3-审批通过 4-已完成 5-已作废',
+                           status                          TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-未提交 2-已提交 3-已删除 4-已作废',
                            meal_allowance_total            INT NOT NULL DEFAULT 0 COMMENT '餐费补助合计(分)',
                            transport_allowance_total       INT NOT NULL DEFAULT 0 COMMENT '交通补助合计(分)',
                            communication_allowance_total   INT NOT NULL DEFAULT 0 COMMENT '通讯补助合计(分)',
@@ -126,7 +126,7 @@ CREATE TABLE reim_form (
                            CONSTRAINT chk_form_trans CHECK (transport_allowance_total >= 0),
                            CONSTRAINT chk_form_comm CHECK (communication_allowance_total >= 0),
                            CONSTRAINT chk_form_total CHECK (allowance_total >= 0),
-                           CONSTRAINT chk_form_status CHECK (status IN (1,2,3,4,5))
+                           CONSTRAINT chk_form_status CHECK (status IN (1,2,3,4))
 ) COMMENT '报销单主表（金额单位：分）';
 
 -- 补录行程表（原 id 改为 itinerary_uid，新增自增 id，form_id 仍引用 reim_form.form_uid）
@@ -329,10 +329,10 @@ INSERT INTO reim_form (
     business_type_id, status, meal_allowance_total, transport_allowance_total,
     communication_allowance_total, allowance_total, remark, version
 ) VALUES
--- 报销单1：徐年年（北京分公司/客户成功事业部），境内项目出差，状态：审批通过
+-- 报销单1：徐年年（北京分公司/客户成功事业部），境内项目出差，状态：已提交
 (1001, 'RE20240001', '2024年3月北京-上海项目出差', '参与客户现场需求调研', '13AB3A3F72409002', '13AB8D7B52A9B002', '1C54557F1782E000',
- '1B5FEB7DD4396000', 3, 2000, 1000, 0, 3000, '住宿费另由公司承担', 0),
--- 报销单2：郑雨雪（上海分公司/企业消费事业部），市场拓展出差，状态：审批中
+ '1B5FEB7DD4396000', 2, 2000, 1000, 0, 3000, '住宿费另由公司承担', 0),
+-- 报销单2：郑雨雪（上海分公司/企业消费事业部），市场拓展出差，状态：已提交
 (1002, 'RE20240002', '2024年4月杭州市场推广活动', '参加行业展会并拓展客户', '13AB498CC6409002', '13BFD31C6029A002', '19218A262C976000',
  '1A92E43082EFC000', 2, 1500, 800, 0, 2300, '展会门票另行报销', 0),
 -- 报销单3：邹薇（武汉分公司/企业费控事业部），个人团队培训，状态：未提交
@@ -396,10 +396,9 @@ INSERT INTO reim_subsidy_calendar (
 INSERT INTO reim_status_log (
     log_uid, form_id, from_status, to_status, operator_id, operate_time, remark
 ) VALUES
--- 报销单1001 状态变更记录：未提交→审批中（2024-03-12），审批中→审批通过（2024-03-15）
+-- 报销单1001 状态变更记录：未提交→已提交（2024-03-12）
 (5001, 1001, 1, 2, '13AB3A3F72409002', '2024-03-12 09:23:00', '员工提交报销单'),
-(5002, 1001, 2, 3, '19206611C47A6000', '2024-03-15 14:17:00', '部门经理审批通过'),
--- 报销单1002 状态变更记录：未提交→审批中（2024-04-06）
-(5003, 1002, 1, 2, '13AB498CC6409002', '2024-04-06 10:05:00', '员工提交，待经理审批'),
+-- 报销单1002 状态变更记录：未提交→已提交（2024-04-06）
+(5003, 1002, 1, 2, '13AB498CC6409002', '2024-04-06 10:05:00', '员工提交报销单'),
 -- 报销单1003 暂无状态变更（仍未提交），故无记录
 (5004, 1003, 1, 1, '13AB4A56BB009002', '2024-05-10 08:30:00', '草稿保存');

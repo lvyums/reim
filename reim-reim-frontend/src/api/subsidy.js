@@ -31,7 +31,7 @@ export function addReimSubsidy(data) {
 export function updateReimSubsidy(data) {
   return request({
     url: '/api/reimSubsidy/update',
-    method: 'post',
+    method: 'put',
     data
   });
 }
@@ -43,7 +43,7 @@ export function updateReimSubsidy(data) {
 export function deleteReimSubsidy(data) {
   return request({
     url: '/api/reimSubsidy/delete',
-    method: 'post',
+    method: 'delete',
     data
   });
 }
