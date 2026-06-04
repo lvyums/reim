@@ -7,6 +7,7 @@ import com.viessmart.reimburse.entity.ReimStatusLog;
 import com.viessmart.reimburse.mapper.ReimStatusLogMapper;
 import com.viessmart.reimburse.service.IReimStatusLogService;
 import com.viessmart.reimburse.vo.ReimStatusLogVO;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -34,6 +35,7 @@ public class ReimStatusLogServiceImpl extends ServiceImpl<ReimStatusLogMapper, R
     }
 
     @Override
+    @Async("reimAsyncExecutor")
     public void addLog(Long formId, Integer fromStatus, Integer toStatus, String operatorId, String remark) {
         ReimStatusLog log = new ReimStatusLog();
         log.setFormId(formId);

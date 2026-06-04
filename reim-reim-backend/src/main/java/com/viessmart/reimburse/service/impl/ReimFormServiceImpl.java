@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -56,6 +58,10 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
     // 日志服务
     @Autowired
     private IReimStatusLogService reimStatusLogService;
+
+    // 并行查询线程池
+    @jakarta.annotation.Resource(name = "reimQueryExecutor")
+    private Executor reimQueryExecutor;
 
 
 
@@ -104,7 +110,7 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
 
 
         if (page.getRecords() != null && !page.getRecords().isEmpty()) {
-            // ====================== 批量查询优化：解决 N+1 问题 ======================
+            // ====================== 批量查询优化：CompletableFuture 并行查询解决 N+1 问题 ======================
             List<ReimForm> forms = page.getRecords();
 
             // 1. 收集所有不重复的 ID
@@ -128,44 +134,47 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 
-            // 2. 批量 IN 查询，一次性获取所有关联数据
-            Map<String, ReimEmployee> employeeMap = new HashMap<>();
-            if (!reimburserIds.isEmpty()) {
-                LambdaQueryWrapper<ReimEmployee> empWrapper = new LambdaQueryWrapper<>();
-                empWrapper.in(ReimEmployee::getReimburserId, reimburserIds);
-                employeeMap = employeeService.list(empWrapper).stream()
+            // 2. CompletableFuture 并行查询4个关联表
+            CompletableFuture<Map<String, ReimEmployee>> empFuture = CompletableFuture.supplyAsync(() -> {
+                if (reimburserIds.isEmpty()) return new HashMap<>();
+                LambdaQueryWrapper<ReimEmployee> wrapper = new LambdaQueryWrapper<>();
+                wrapper.in(ReimEmployee::getReimburserId, reimburserIds);
+                return employeeService.list(wrapper).stream()
                         .collect(Collectors.toMap(ReimEmployee::getReimburserId, Function.identity(), (a, b) -> a));
-            }
+            }, reimQueryExecutor);
 
-            Map<String, ReimDepartment> departmentMap = new HashMap<>();
-            if (!departmentIds.isEmpty()) {
-                LambdaQueryWrapper<ReimDepartment> deptWrapper = new LambdaQueryWrapper<>();
-                deptWrapper.in(ReimDepartment::getReimDepartmentId, departmentIds);
-                departmentMap = departmentService.list(deptWrapper).stream()
+            CompletableFuture<Map<String, ReimDepartment>> deptFuture = CompletableFuture.supplyAsync(() -> {
+                if (departmentIds.isEmpty()) return new HashMap<>();
+                LambdaQueryWrapper<ReimDepartment> wrapper = new LambdaQueryWrapper<>();
+                wrapper.in(ReimDepartment::getReimDepartmentId, departmentIds);
+                return departmentService.list(wrapper).stream()
                         .collect(Collectors.toMap(ReimDepartment::getReimDepartmentId, Function.identity(), (a, b) -> a));
-            }
+            }, reimQueryExecutor);
 
-            Map<String, ReimCompany> companyMap = new HashMap<>();
-            if (!companyIds.isEmpty()) {
-                LambdaQueryWrapper<ReimCompany> compWrapper = new LambdaQueryWrapper<>();
-                compWrapper.in(ReimCompany::getReimCompanyId, companyIds);
-                companyMap = companyService.list(compWrapper).stream()
+            CompletableFuture<Map<String, ReimCompany>> compFuture = CompletableFuture.supplyAsync(() -> {
+                if (companyIds.isEmpty()) return new HashMap<>();
+                LambdaQueryWrapper<ReimCompany> wrapper = new LambdaQueryWrapper<>();
+                wrapper.in(ReimCompany::getReimCompanyId, companyIds);
+                return companyService.list(wrapper).stream()
                         .collect(Collectors.toMap(ReimCompany::getReimCompanyId, Function.identity(), (a, b) -> a));
-            }
+            }, reimQueryExecutor);
 
-            Map<String, BaseBusinessType> businessTypeMap = new HashMap<>();
-            if (!businessTypeIds.isEmpty()) {
-                LambdaQueryWrapper<BaseBusinessType> btWrapper = new LambdaQueryWrapper<>();
-                btWrapper.in(BaseBusinessType::getBusinessTypeId, businessTypeIds);
-                businessTypeMap = businessTypeService.list(btWrapper).stream()
+            CompletableFuture<Map<String, BaseBusinessType>> btFuture = CompletableFuture.supplyAsync(() -> {
+                if (businessTypeIds.isEmpty()) return new HashMap<>();
+                LambdaQueryWrapper<BaseBusinessType> wrapper = new LambdaQueryWrapper<>();
+                wrapper.in(BaseBusinessType::getBusinessTypeId, businessTypeIds);
+                return businessTypeService.list(wrapper).stream()
                         .collect(Collectors.toMap(BaseBusinessType::getBusinessTypeId, Function.identity(), (a, b) -> a));
-            }
+            }, reimQueryExecutor);
 
-            // 3. 使用批量查询结果进行转换
-            final Map<String, ReimEmployee> finalEmployeeMap = employeeMap;
-            final Map<String, ReimDepartment> finalDepartmentMap = departmentMap;
-            final Map<String, ReimCompany> finalCompanyMap = companyMap;
-            final Map<String, BaseBusinessType> finalBusinessTypeMap = businessTypeMap;
+            // 3. 等待全部并行查询完成
+            CompletableFuture.allOf(empFuture, deptFuture, compFuture, btFuture).join();
+
+            // 4. 获取并行查询结果
+            Map<String, ReimEmployee> finalEmployeeMap = empFuture.join();
+            Map<String, ReimDepartment> finalDepartmentMap = deptFuture.join();
+            Map<String, ReimCompany> finalCompanyMap = compFuture.join();
+            Map<String, BaseBusinessType> finalBusinessTypeMap = btFuture.join();
 
             voList = forms.stream()
                     .map(form -> convertVO(form, finalEmployeeMap, finalDepartmentMap, finalCompanyMap, finalBusinessTypeMap))
@@ -282,7 +291,10 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
         if (form.getStatus() != FormStatusEnum.DRAFT.getCode())
             throw new RuntimeException("只能编辑未提交单据");
         BeanUtils.copyProperties(dto, form);
-        updateById(form);
+        boolean success = updateById(form);
+        if (!success) {
+            throw new RuntimeException("操作冲突，请刷新后重试");
+        }
         return getFormDetail(formUid);
 
     }
@@ -301,7 +313,10 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
         form.setStatus(FormStatusEnum.DELETED.getCode());
         form.setDeleted(1);
         form.setUpdateTime(LocalDateTime.now());
-        updateById(form);
+        boolean success = updateById(form);
+        if (!success) {
+            throw new RuntimeException("操作冲突，请刷新后重试");
+        }
 
         reimStatusLogService.addLog(
                 formUid,
@@ -327,7 +342,10 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
 
         form.setStatus(FormStatusEnum.SUBMITTED.getCode());
         form.setUpdateTime(LocalDateTime.now());
-        updateById(form);
+        boolean success = updateById(form);
+        if (!success) {
+            throw new RuntimeException("操作冲突，请刷新后重试");
+        }
 
         // 记录日志
         reimStatusLogService.addLog(
@@ -355,7 +373,10 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
         form.setStatus(FormStatusEnum.CANCELED.getCode());
         form.setDeleted(1);
         form.setUpdateTime(LocalDateTime.now());
-        updateById(form);
+        boolean success = updateById(form);
+        if (!success) {
+            throw new RuntimeException("操作冲突，请刷新后重试");
+        }
 
         reimStatusLogService.addLog(
                 formUid,
@@ -382,10 +403,12 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
             throw new RuntimeException("只有已提交的报销单才能撤回");
         }
 
-        ReimForm update = new ReimForm();
-        update.setFormUid(formUid);
-        update.setStatus(FormStatusEnum.DRAFT.getCode());
-        updateById(update);
+        form.setStatus(FormStatusEnum.DRAFT.getCode());
+        form.setUpdateTime(LocalDateTime.now());
+        boolean success = updateById(form);
+        if (!success) {
+            throw new RuntimeException("操作冲突，请刷新后重试");
+        }
 
         reimStatusLogService.addLog(
                 formUid,
