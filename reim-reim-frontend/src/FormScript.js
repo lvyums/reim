@@ -54,7 +54,7 @@ async function loadDictList() {
     }
     typeOption.value = transCascader(rawTree)
   } catch (err) {
-    console.error('字典加载失败', err)
+    // 拦截器已统一处理错误提示
   }
 }
 
@@ -148,7 +148,6 @@ async function loadTripsAndSubsidies() {
       subsidyAmount: ((item.subsidyAmount || 0) / 100).toFixed(2)
     }))
   } catch (e) {
-    console.error('加载行程/补助失败', e)
     tripList.value = []
     helpList.value = []
   }
@@ -164,7 +163,7 @@ async function loadSubsidies() {
       subsidyAmount: ((item.subsidyAmount || 0) / 100).toFixed(2)
     }))
   } catch (e) {
-    console.error('加载补助失败', e)
+    // 拦截器已统一处理错误提示
   }
 }
 
@@ -320,8 +319,6 @@ const getCityName = (cityNo) => {
       tripDialog.value = false
       ElMessage.success('保存成功')
     } catch (err) {
-      console.error('保存失败：', err)
-      ElMessage.error('保存失败：' + (err.response?.data?.message || '日期格式错误'))
       tripDialog.value = false
     }
   }
@@ -337,8 +334,6 @@ const deleteTrip = async (i) => {
     ElMessage.success('删除成功')
   } catch (e) {
     if (e === 'cancel') return
-    console.error('删除行程失败', e)
-    ElMessage.error('删除失败：' + (e.response?.data?.message || '请稍后重试'))
     await loadTripsAndSubsidies()
     await refreshTotals()
   }
@@ -408,8 +403,6 @@ const editSubsidy = async (row, i) => {
 
     helpDialog.value = true
   } catch (err) {
-    console.error('加载补助日历失败', err)
-    ElMessage.error('加载失败')
     helpCalendar.value = []
     helpDialog.value = true
   }
@@ -450,7 +443,7 @@ async function refreshTotals() {
     communicationAllowanceTotal.value = (data.communicationAllowanceTotal || 0) / 100
     allowanceTotal.value = (data.allowanceTotal || 0) / 100
   } catch (e) {
-    console.error('刷新费用合计失败', e)
+    // 拦截器已统一处理错误提示
   }
 }
 
@@ -479,8 +472,6 @@ const saveHelp = async () => {
     await refreshTotals()   // 只刷新金额，不动表单
     //await loadTripsAndSubsidies()
   } catch (e) {
-    console.error(e)
-    ElMessage.error('保存失败')
     helpDialog.value = false
   }
 }
@@ -539,15 +530,10 @@ const close = async () => {
         itineraryList: tripList.value,
         subsidyList: helpList.value
       }
-      const res = await updateReimForm(formUid, dto)
-      if (res.data?.code === 500) {
-        ElMessage.error(res.data?.message || '保存失败')
-        return
-      }
+      await updateReimForm(formUid, dto)
       ElMessage.success('保存成功')
     } catch (e) {
-      console.error(e)
-      ElMessage.error('操作失败，请稍后重试')
+      // 拦截器已统一处理错误提示
       return
     }
   }
@@ -582,22 +568,12 @@ const submit = async () => {
       itineraryList: tripList.value,
       subsidyList: helpList.value
     }
-    const saveRes = await updateReimForm(formUid, dto)
-    if (saveRes.data?.code === 500) {
-      ElMessage.error(saveRes.data?.message || '保存失败')
-      return
-    }
-    const submitRes = await submitReimForm(formUid)
-    if (submitRes.data?.code === 500) {
-      ElMessage.error(submitRes.data?.message || '提交失败')
-      return
-    }
-
+    await updateReimForm(formUid, dto)
+    await submitReimForm(formUid)
     ElMessage.success('提交成功')
     router.push('/')
   } catch (e) {
-    console.error(e)
-    ElMessage.error('操作失败，请稍后重试')
+    // 拦截器已统一处理错误提示
   }
 }
 

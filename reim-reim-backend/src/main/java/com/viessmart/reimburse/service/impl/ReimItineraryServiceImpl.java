@@ -61,9 +61,6 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ReimItinerary addReimItinerary(ReimItineraryDTO itineraryDTO) {
-        //从全局变量中获取报销单Id
-        //Long formUid = FormIdContext.getFormUid();
-        //System.out.println("===== 1. addReimItinerary 开始，参数：" + itineraryDTO);
         try{
             if (itineraryDTO.getFormId() == null) {
                     throw new RuntimeException("请先选择报销单！");
@@ -110,9 +107,7 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
                 reimItinerary.setDescription(itineraryDTO.getDescription());
                 reimItinerary.setCreateTime(LocalDateTime.now());
                 reimItinerary.setUpdateTime(LocalDateTime.now());
-                //System.out.println("=== 2. 通过存在性检查，准备保存行程 ===");
                 save(reimItinerary);
-                //System.out.println("=== 3. 行程保存成功，itineraryUid=" + reimItinerary.getItineraryUid());
 
                 //添加补助信息
                 ReimSubsidy reimSubsidy = new ReimSubsidy();
@@ -130,17 +125,14 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
 
                 iReimSubsidyService.save(reimSubsidy);
                 //添加补助日历明细(从开始日期到结束日期)
-                //System.out.println("=== 4. 补助保存成功，subsidyUid=" + reimSubsidy.getSubsidyUid());
 
                 List<ReimSubsidyCalendar> calendarList = new ArrayList<>();
 
                 // 从出发日期开始，一直循环到到达日期
                 LocalDate currentDate = departure;
                 String cityNo = itineraryDTO.getDepartureCityNo();
-                //System.out.println("=== 城市编号：" + cityNo);
                 // 1. 从数据库查城市类型
                 Integer cityType = baseCityService.getCityTypeByCityNo(cityNo);
-                //System.out.println("=== 城市类型：" + cityType);
                 if (cityType == null) {
                     throw new RuntimeException("城市编号 " + cityNo + " 无效，无法获取补助标准");
                 }
@@ -185,15 +177,11 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
 
 
                 iReimSubsidyCalendarService.saveBatch(calendarList);
-                //System.out.println("===== 11. 全部保存成功 =====");
-                //System.out.println("=== 5. 日历保存成功，数量：" + calendarList.size());
-                
+
                 // 返回创建后的行程对象（包含itineraryUid）
                 return reimItinerary;
             }catch(Exception e) {
-                //System.err.println("===== 新增行程失败，事务回滚 =====");
-                e.printStackTrace();
-                // 抛出异常 → 让 Controller 捕获 → 前端提示错误
+                log.error("新增行程失败", e);
                 throw new RuntimeException(e.getMessage());
             }
     }
@@ -241,39 +229,7 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
                 .update();
 
         // 5. 重新计算报销单总金额（仅统计剩余未删除的补助）
-        recalculateFormTotals(formId);
-    }
-
-    /**
-     * 重新计算报销单的补助合计（从剩余未删除的补助日历汇总）
-     */
-    private void recalculateFormTotals(Long formUid) {
-        // 查询该报销单下所有未删除的补助
-        List<ReimSubsidy> remaining = iReimSubsidyService.lambdaQuery()
-                .eq(ReimSubsidy::getFormId, formUid)
-                .eq(ReimSubsidy::getDeleted, 0)
-                .list();
-
-        int mealTotal = 0, transportTotal = 0, commTotal = 0;
-        for (ReimSubsidy sub : remaining) {
-            List<ReimSubsidyCalendar> calendars = iReimSubsidyCalendarService.lambdaQuery()
-                    .eq(ReimSubsidyCalendar::getSubsidyId, sub.getSubsidyUid())
-                    .eq(ReimSubsidyCalendar::getDeleted, 0)
-                    .list();
-            for (ReimSubsidyCalendar cal : calendars) {
-                if (cal.getMealSelected() == 1) mealTotal += cal.getMealActualAmount();
-                if (cal.getTransportSelected() == 1) transportTotal += cal.getTransportActualAmount();
-                if (cal.getCommSelected() == 1) commTotal += cal.getCommActualAmount();
-            }
-        }
-
-        ReimForm form = new ReimForm();
-        form.setFormUid(formUid);
-        form.setMealAllowanceTotal(mealTotal);
-        form.setTransportAllowanceTotal(transportTotal);
-        form.setCommunicationAllowanceTotal(commTotal);
-        form.setAllowanceTotal(mealTotal + transportTotal + commTotal);
-        iReimFormService.updateById(form);
+        iReimFormService.recalculateFormTotals(formId);
     }
 
     /**
@@ -367,10 +323,6 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
             String arrivalCityName = getCityNameFromMap(itinerary.getArrivalCityNo(), cityNameMap);
             vo.setItineraryCity(departureCityName + "至" + arrivalCityName);
 
-
-            //通过NO得到name
-            //vo.setItineraryCity(baseCityService.getCityNameByCityNo(itinerary.getDepartureCityNo())+"至"+baseCityService.getCityNameByCityNo(itinerary.getArrivalCityNo()));
-
             vo.setDepartureDate(itinerary.getDepartureDate());
             vo.setArrivalDate(itinerary.getArrivalDate());
             vo.setItineraryDate(itinerary.getDepartureDate() + "至" + itinerary.getArrivalDate());
@@ -398,7 +350,6 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateItinerary(ReimItineraryDTO itineraryDTO) {
-        //System.out.println("===== 1. 方法开始 =====");
         Long itineraryUid = itineraryDTO.getItineraryUid();
         if (itineraryUid == null) {
             log.debug("行程ID不能为空") ;
@@ -413,7 +364,6 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
             log.debug("出发日期不能晚于到达日期");
             throw new RuntimeException("出发日期不能晚于到达日期");
         }
-        //System.out.println("===== 2. 参数校验通过 =====");
         // ====================== 1. 更新行程信息 ======================
         ReimItinerary itinerary = new ReimItinerary();
         itinerary.setFormId(itineraryDTO.getFormId());
@@ -425,13 +375,9 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
         itinerary.setArrivalDate(arrival);
         itinerary.setDeleted(0);
         itinerary.setDescription(itineraryDTO.getDescription());
-        //itinerary.setCreateTime(LocalDateTime.now());
         itinerary.setUpdateTime(LocalDateTime.now());
         updateById(itinerary);
         log.debug("行程信息更新成功");
-        //System.out.println("更新行程完成，准备查询旧补助");
-
-        //System.out.println("===== 5. 开始删除旧日历和补助 =====");
         // ====================== 2. 真删除旧补助 + 旧日历 ======================
         ReimSubsidy oldSubsidy = iReimSubsidyService.getOne(
                 new QueryWrapper<ReimSubsidy>().eq("itinerary_id", itineraryUid)
@@ -450,14 +396,11 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
             // 真删除补助
             iReimSubsidyService.removeById(subsidyId);
             log.debug("旧日历信息删除成功");
-            //System.out.println("===== 6. 删除完成 =====");
         } catch (Exception e) {
-            //System.out.println("===== 删除旧数据时发生异常 =====");
-                e.printStackTrace();  // 强制打印堆栈
-                throw e;  // 继续抛出，让事务回滚
+                log.error("删除旧数据时发生异常", e);
+                throw e;
             }
         }
-        //System.out.println("===== 6. 删除完成 =====");
         try{
         // ====================== 3. 全新生成补助 ======================
         ReimSubsidy newSubsidy = new ReimSubsidy();
@@ -514,18 +457,14 @@ public class ReimItineraryServiceImpl extends ServiceImpl<ReimItineraryMapper, R
             currentDate = currentDate.plusDays(1);
         }
 
-        //iReimSubsidyService.save(newSubsidy);
-            // 更新补助的申请金额（总标准金额）需要除以100，保留两位小数
          newSubsidy.setApplyAmount(standardAmount);
          iReimSubsidyService.updateById(newSubsidy);  // 或再次保存，但建议更新
         iReimSubsidyCalendarService.saveBatch(calendarList);
         log.debug("新日历信息生成成功");
         } catch (Exception e) {
-            //System.out.println("===== 捕获到异常: " + e.getMessage() + " =====");
             log.error("生成新日历信息时出错", e);
             throw new RuntimeException(e);
         }
-        //System.out.println("===== 10. 方法正常结束 =====");
     }
 
 }

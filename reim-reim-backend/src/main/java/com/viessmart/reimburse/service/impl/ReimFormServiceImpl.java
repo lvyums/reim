@@ -10,7 +10,6 @@ import com.viessmart.reimburse.dto.ReimFormSaveDTO;
 import com.viessmart.reimburse.entity.*;
 import com.viessmart.reimburse.mapper.ReimFormMapper;
 import com.viessmart.reimburse.service.*;
-import com.viessmart.reimburse.tools.FormIdContext;
 import com.viessmart.reimburse.vo.ReimFormVO;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +53,9 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
 
     @Resource
     private IReimSubsidyService subsidyService;
+
+    @Resource
+    private IReimSubsidyCalendarService subsidyCalendarService;
 
     // 日志服务
     @Autowired
@@ -257,8 +259,6 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
         }
         ReimFormVO vo = convertVO(form);
 
-        // 添加全局报销单ID
-        FormIdContext.setForm(formUid, form.getReimburserId());
         // 3. 查询行程列表
         LambdaQueryWrapper<ReimItinerary> itineraryQuery = new LambdaQueryWrapper<>();
         itineraryQuery.eq(ReimItinerary::getFormId, formUid);
@@ -325,7 +325,7 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
                 form.getReimburserId(),
                 "删除报销单"
         );
-        FormIdContext.remove();
+
     }
 
     /**
@@ -355,7 +355,7 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
                 form.getReimburserId(),
                 "提交报销单"
         );
-        FormIdContext.remove();
+
     }
 
     /**
@@ -385,7 +385,7 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
                 form.getReimburserId(),
                 "作废报销单"
         );
-        FormIdContext.remove();
+
     }
 
     /**
@@ -417,7 +417,7 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
                 form.getReimburserId(),
                 "撤回报销单"
         );
-        FormIdContext.remove();
+
     }
 
     private ReimFormVO convertVO(ReimForm form) {
@@ -473,6 +473,40 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
     }
 
     /**
+     * 重新计算报销单的补助合计（从剩余未删除的补助日历汇总）
+     * @param formUid 报销单ID
+     */
+    @Override
+    public void recalculateFormTotals(Long formUid) {
+        // 查询该报销单下所有未删除的补助
+        List<ReimSubsidy> subsidies = subsidyService.lambdaQuery()
+                .eq(ReimSubsidy::getFormId, formUid)
+                .eq(ReimSubsidy::getDeleted, 0)
+                .list();
+
+        int mealTotal = 0, transportTotal = 0, commTotal = 0;
+        for (ReimSubsidy sub : subsidies) {
+            List<ReimSubsidyCalendar> calendars = subsidyCalendarService.lambdaQuery()
+                    .eq(ReimSubsidyCalendar::getSubsidyId, sub.getSubsidyUid())
+                    .eq(ReimSubsidyCalendar::getDeleted, 0)
+                    .list();
+            for (ReimSubsidyCalendar cal : calendars) {
+                if (cal.getMealSelected() == 1) mealTotal += cal.getMealActualAmount();
+                if (cal.getTransportSelected() == 1) transportTotal += cal.getTransportActualAmount();
+                if (cal.getCommSelected() == 1) commTotal += cal.getCommActualAmount();
+            }
+        }
+
+        ReimForm form = new ReimForm();
+        form.setFormUid(formUid);
+        form.setMealAllowanceTotal(mealTotal);
+        form.setTransportAllowanceTotal(transportTotal);
+        form.setCommunicationAllowanceTotal(commTotal);
+        form.setAllowanceTotal(mealTotal + transportTotal + commTotal);
+        updateById(form);
+    }
+
+    /**
      * 新增空白报销单
      */
     @Override
@@ -499,8 +533,6 @@ public class ReimFormServiceImpl extends ServiceImpl<ReimFormMapper, ReimForm> i
         form.setUpdateTime(LocalDateTime.now());
 
         save(form);
-        //获取全局报销单ID
-        FormIdContext.setForm(form.getFormUid(), form.getReimburserId());
 
         return convertVO(form);
 

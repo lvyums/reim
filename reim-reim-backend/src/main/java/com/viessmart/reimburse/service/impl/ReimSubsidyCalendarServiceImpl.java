@@ -3,13 +3,12 @@ package com.viessmart.reimburse.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
 import com.viessmart.reimburse.dto.SubsidyCalendarSaveDTO;
-import com.viessmart.reimburse.entity.ReimForm;
 import com.viessmart.reimburse.entity.ReimSubsidy;
 import com.viessmart.reimburse.entity.ReimSubsidyCalendar;
-import com.viessmart.reimburse.mapper.ReimFormMapper;
 import com.viessmart.reimburse.mapper.ReimSubsidyCalendarMapper;
 import com.viessmart.reimburse.mapper.ReimSubsidyMapper;
 import com.viessmart.reimburse.service.IBaseCityService;
+import com.viessmart.reimburse.service.IReimFormService;
 import com.viessmart.reimburse.service.IReimSubsidyCalendarService;
 import com.viessmart.reimburse.vo.SubsidyCalendarVO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +36,7 @@ public class ReimSubsidyCalendarServiceImpl extends ServiceImpl<ReimSubsidyCalen
     @Autowired
     private ReimSubsidyMapper reimSubsidyMapper;
     @Autowired
-    private ReimFormMapper reimFormMapper;
+    private IReimFormService reimFormService;
 
     /**
      * 查询补助日历
@@ -157,41 +156,9 @@ public class ReimSubsidyCalendarServiceImpl extends ServiceImpl<ReimSubsidyCalen
         ReimSubsidy subsidy = reimSubsidyMapper.selectById(subsidyUid);
         if (subsidy == null) return;
         subsidy.setSubsidyAmount(total);
-        //subsidy.setApplyAmount(total);
         reimSubsidyMapper.updateById(subsidy);
 
         // 4. 同步更新报销单主表金额
-        updateFormTotals(subsidy.getFormId());
-    }
-
-    /**
-     * 重新计算报销单主表的补助合计
-     */
-    private void updateFormTotals(Long formUid) {
-        List<ReimSubsidy> subsidies = reimSubsidyMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReimSubsidy>()
-                        .eq(ReimSubsidy::getFormId, formUid)
-                        .eq(ReimSubsidy::getDeleted, 0)
-        );
-        int mealTotal = 0, transportTotal = 0, commTotal = 0;
-        for (ReimSubsidy sub : subsidies) {
-            // 查询该补助下的日历明细，按分类汇总
-            List<ReimSubsidyCalendar> calendars = lambdaQuery()
-                    .eq(ReimSubsidyCalendar::getSubsidyId, sub.getSubsidyUid())
-                    .eq(ReimSubsidyCalendar::getDeleted, 0)
-                    .list();
-            for (ReimSubsidyCalendar cal : calendars) {
-                if (cal.getMealSelected() == 1) mealTotal += cal.getMealActualAmount();
-                if (cal.getTransportSelected() == 1) transportTotal += cal.getTransportActualAmount();
-                if (cal.getCommSelected() == 1) commTotal += cal.getCommActualAmount();
-            }
-        }
-        ReimForm form = new ReimForm();
-        form.setFormUid(formUid);
-        form.setMealAllowanceTotal(mealTotal);
-        form.setTransportAllowanceTotal(transportTotal);
-        form.setCommunicationAllowanceTotal(commTotal);
-        form.setAllowanceTotal(mealTotal + transportTotal + commTotal);
-        reimFormMapper.updateById(form);
+        reimFormService.recalculateFormTotals(subsidy.getFormId());
     }
 }

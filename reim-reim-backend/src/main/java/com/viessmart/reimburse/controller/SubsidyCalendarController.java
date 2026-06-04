@@ -3,8 +3,8 @@ package com.viessmart.reimburse.controller;
 import com.viessmart.reimburse.common.Result;
 import com.viessmart.reimburse.dto.SubsidyCalendarSaveDTO;
 import com.viessmart.reimburse.service.IReimSubsidyCalendarService;
-
 import com.viessmart.reimburse.vo.SubsidyCalendarVO;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,7 +31,7 @@ public class SubsidyCalendarController {
     @PutMapping("/{subsidyUid}")
     public Result<?> saveCalendar(
             @PathVariable Long subsidyUid,
-            @RequestBody SubsidyCalendarSaveDTO dto) {
+            @Valid @RequestBody SubsidyCalendarSaveDTO dto) {
         subsidyCalendarService.saveCalendarAndRecalculate(subsidyUid, dto);
         return Result.success("保存成功");
     }

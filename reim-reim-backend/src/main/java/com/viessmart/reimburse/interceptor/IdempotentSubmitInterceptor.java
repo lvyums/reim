@@ -10,6 +10,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 /**
  * 防重复提交拦截器
  * 基于 formUid + 操作路径 生成唯一 key，短时间内重复请求直接拒绝
+ * key 在 3 秒后自动过期，不在 afterCompletion 中释放
  */
 public class IdempotentSubmitInterceptor implements HandlerInterceptor {
 
@@ -22,21 +23,22 @@ public class IdempotentSubmitInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 从 URL 中提取 formUid（路径格式：/api/reimbursement/forms/{formUid}/submit）
+        // 从 URL 中提取 formUid
         String path = request.getRequestURI();
         String formUid = extractFormUid(path);
         if (formUid == null) {
             return true;
         }
 
-        // 生成幂等 key：formUid + 操作路径
-        String idempotentKey = "form_submit:" + formUid + ":" + path;
+        // 生成幂等 key：formUid + 操作类型
+        String action = path.substring(path.lastIndexOf('/') + 1);
+        String idempotentKey = "form_submit:" + formUid + ":" + action;
 
         if (!IdempotentUtil.tryAcquire(idempotentKey)) {
-            // 重复请求，返回提示
+            // 重复请求，返回 200 + 业务错误码 429（与前端现有错误处理模式一致）
             response.setContentType("application/json;charset=UTF-8");
             response.setStatus(200);
-            Result<String> result = Result.error("操作过于频繁，请勿重复提交", null);
+            Result<String> result = Result.error(429, "操作过于频繁，请勿重复提交", null);
             response.getWriter().write(OBJECT_MAPPER.writeValueAsString(result));
             return false;
         }
@@ -44,26 +46,13 @@ public class IdempotentSubmitInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        // 请求完成后释放 key，允许后续正常操作
-        String path = request.getRequestURI();
-        String formUid = extractFormUid(path);
-        if (formUid != null) {
-            String idempotentKey = "form_submit:" + formUid + ":" + path;
-            IdempotentUtil.release(idempotentKey);
-        }
-    }
-
     /**
      * 从 URL 路径中提取 formUid
-     * 路径格式：/api/reimbursement/forms/{formUid}/submit 或 /cancel
+     * 路径格式：/api/reimbursement/forms/{formUid}/submit|cancel|withdraw
      */
     private String extractFormUid(String path) {
-        // 匹配 /api/reimbursement/forms/数字/submit 或 /cancel
         if (path.matches(".*/api/reimbursement/forms/\\d+/(submit|cancel|withdraw)$")) {
             String[] segments = path.split("/");
-            // 倒数第二个是 formUid
             return segments[segments.length - 2];
         }
         return null;

@@ -70,7 +70,7 @@ async function loadDictData() {
     const types = await getBusinessTypeTree()
     businessTypeList.value = types.data.data || []
   } catch (e) {
-    console.error("加载字典失败", e)
+    // 拦截器已统一处理错误提示
   }
 }
 
@@ -81,7 +81,7 @@ async function loadList() {
     tableData.value = res.data.data.records || []
     total.value = res.data.data.total || 0
   } catch (err) {
-    console.error('接口报错', err)
+    // 拦截器已统一处理错误提示
   }
 }
 
@@ -108,8 +108,6 @@ async function handleAdd() {
       title: "未命名报销单"
     })
 
-    console.log("后端完整返回:", res)  // 看一眼返回
-
     // 2. 安全获取 formUid
     const formUid = res?.data?.data?.formUid
     if (!formUid) {
@@ -121,8 +119,7 @@ async function handleAdd() {
     router.push(`/form?formUid=${formUid}`)
 
   } catch (e) {
-    console.error("创建异常：", e)
-    ElMessage.error('创建失败：' + (e?.response?.data?.message || '未知错误'))
+    // 拦截器已统一处理错误提示
   }
 }
 
@@ -131,15 +128,11 @@ async function handleAdd() {
 async function handleSubmit(row) {
   try {
     await confirmTip('确定提交该报销单吗？')
-    const res = await submitReimForm(row.formUid)
-    if (res.data?.code === 500) {
-      ElMessage.error(res.data?.message || '提交失败')
-      return
-    }
+    await submitReimForm(row.formUid)
     ElMessage.success('提交成功')
     loadList()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('提交失败')
+    // 拦截器已统一处理错误提示，此处仅忽略 ElMessageBox 取消
   }
 }
 
@@ -147,15 +140,11 @@ async function handleSubmit(row) {
 async function handleRecall(row) {
   try {
     await confirmTip('确定撤回该报销单吗？')
-    const res = await withdrawReimForm(row.formUid)
-    if (res.data?.code === 500) {
-      ElMessage.error(res.data?.message || '撤回失败')
-      return
-    }
+    await withdrawReimForm(row.formUid)
     ElMessage.success('撤回成功')
     loadList()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('撤回失败')
+    // 拦截器已统一处理错误提示
   }
 }
 
@@ -163,15 +152,11 @@ async function handleRecall(row) {
 async function handleDelete(row) {
   try {
     await confirmTip('此操作将永久删除单据，确定继续？')
-    const res = await deleteReimForm(row.formUid)
-    if (res.data?.code === 500) {
-      ElMessage.error(res.data?.message || '删除失败')
-      return
-    }
+    await deleteReimForm(row.formUid)
     ElMessage.success('删除成功')
     loadList()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    // 拦截器已统一处理错误提示
   }
 }
 
@@ -179,15 +164,11 @@ async function handleDelete(row) {
 async function handleCancel(row) {
   try {
     await confirmTip('确定作废该报销单吗？')
-    const res = await cancelReimForm(row.formUid)
-    if (res.data?.code === 500) {
-      ElMessage.error(res.data?.message || '作废失败')
-      return
-    }
+    await cancelReimForm(row.formUid)
     ElMessage.success('作废成功')
     loadList()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('作废失败')
+    // 拦截器已统一处理错误提示
   }
 }
 

@@ -71,4 +71,10 @@ public interface IReimFormService extends IService<ReimForm> {
      * @param formUid
      */
     void withdrawForm(Long formUid);
+
+    /**
+     * 重新计算报销单的补助合计（从剩余未删除的补助日历汇总）
+     * @param formUid 报销单ID
+     */
+    void recalculateFormTotals(Long formUid);
 }
