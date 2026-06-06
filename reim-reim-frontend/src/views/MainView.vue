@@ -43,6 +43,7 @@ const tableData = ref([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const submittingId = ref(null) // 正在操作的行ID，用于按钮 loading
 
 // 下拉框数据
 const companyList = ref([])
@@ -128,11 +129,14 @@ async function handleAdd() {
 async function handleSubmit(row) {
   try {
     await confirmTip('确定提交该报销单吗？')
+    submittingId.value = row.formUid
     await submitReimForm(row.formUid)
     ElMessage.success('提交成功')
     loadList()
   } catch (e) {
-    // 拦截器已统一处理错误提示，此处仅忽略 ElMessageBox 取消
+    // 拦截器已统一处理错误提示
+  } finally {
+    submittingId.value = null
   }
 }
 
@@ -140,11 +144,14 @@ async function handleSubmit(row) {
 async function handleRecall(row) {
   try {
     await confirmTip('确定撤回该报销单吗？')
+    submittingId.value = row.formUid
     await withdrawReimForm(row.formUid)
     ElMessage.success('撤回成功')
     loadList()
   } catch (e) {
     // 拦截器已统一处理错误提示
+  } finally {
+    submittingId.value = null
   }
 }
 
@@ -152,11 +159,14 @@ async function handleRecall(row) {
 async function handleDelete(row) {
   try {
     await confirmTip('此操作将永久删除单据，确定继续？')
+    submittingId.value = row.formUid
     await deleteReimForm(row.formUid)
     ElMessage.success('删除成功')
     loadList()
   } catch (e) {
     // 拦截器已统一处理错误提示
+  } finally {
+    submittingId.value = null
   }
 }
 
@@ -164,11 +174,14 @@ async function handleDelete(row) {
 async function handleCancel(row) {
   try {
     await confirmTip('确定作废该报销单吗？')
+    submittingId.value = row.formUid
     await cancelReimForm(row.formUid)
     ElMessage.success('作废成功')
     loadList()
   } catch (e) {
     // 拦截器已统一处理错误提示
+  } finally {
+    submittingId.value = null
   }
 }
 
@@ -265,7 +278,10 @@ function clear() {
             </el-tooltip>
 
             <el-tooltip content="提交" placement="top">
-              <el-button :icon="Check" size="small" circle type="primary" @click="handleSubmit(scope.row)" />
+              <el-button :icon="Check" size="small" circle type="primary"
+                :loading="submittingId === scope.row.formUid"
+                :disabled="submittingId === scope.row.formUid"
+                @click="handleSubmit(scope.row)" />
             </el-tooltip>
 
             <el-dropdown @command="(c) => handleMoreCommand(c, scope.row)">

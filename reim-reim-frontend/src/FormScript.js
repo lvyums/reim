@@ -564,9 +564,7 @@ const submit = async () => {
       departmentId: formData.deptId,
       companyId: formData.companyId,
       businessTypeId: Array.isArray(formData.bizTypeId) ? formData.bizTypeId[formData.bizTypeId.length - 1] : formData.bizTypeId,
-      remark: formData.remark,
-      itineraryList: tripList.value,
-      subsidyList: helpList.value
+      remark: formData.remark
     }
     await updateReimForm(formUid, dto)
     await submitReimForm(formUid)
